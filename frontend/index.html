@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Google Login</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+  <h2>Login with Google</h2>
+  <div id="g_id_onload"
+      data-client_id="240284264103-sdbshsqbh510239u98e26e1oergt8l2q.apps.googleusercontent.com"
+      data-context="signin"
+      data-login_uri="https://yourbackend.com/auth/google"
+      data-auto_prompt="true"
+      data-auto_select="true">
+  </div>
+  <div class="g_id_signin" data-type="standard"></div>
+
+  <h3 id="welcome" style="margin-top: 20px;"></h3>
+
+  <script>
+    async function handleCredentialResponse(response) {
+      const idToken = response.credential;
+
+      const res = await fetch("http://localhost:8000/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: idToken })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        document.getElementById("welcome").textContent = "Welcome, " + data.name + "!";
+        console.log("JWT:", data.token);
+      } else {
+        alert("Login failed: " + data.detail);
+      }
+    }
+  </script>
+</body>
+</html>
