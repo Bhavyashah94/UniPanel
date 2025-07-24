@@ -37,11 +37,11 @@ EXECUTE FUNCTION update_timestamp();
 
 
 -- Trigger function to enforce a single 'user_list' or 'course_list' child per parent group
-CREATE OR REPLACE FUNCTION check_single_user_list_child()
+CREATE OR REPLACE FUNCTION check_single_list_child()
 RETURNS TRIGGER AS $$
 DECLARE
     child_type group_type_enum;
-    existing_user_list_count INTEGER;
+    existing_list_count INTEGER;
 BEGIN
     -- Get the type of the new child group being added/updated
     SELECT type INTO child_type
@@ -55,7 +55,7 @@ BEGIN
 
     -- If the new child IS a 'user_list' or 'course_list' type, check if the parent already has one of the same type.
     SELECT COUNT(*)
-    INTO existing_user_list_count
+    INTO existing_list_count
     FROM public.group_hierarchies gh
     JOIN public.groups g ON gh.child_group_id = g.id
     WHERE gh.parent_group_id = NEW.parent_group_id
@@ -63,7 +63,7 @@ BEGIN
       AND gh.child_group_id IS DISTINCT FROM NEW.child_group_id; -- Exclude current row on UPDATE
 
     -- If another child of the same type already exists for this parent
-    IF existing_user_list_count > 0 THEN
+    IF existing_list_count > 0 THEN
         RAISE EXCEPTION 'A group (ID: %) already has a child of type "%". Only one child of this type is allowed per parent group.', NEW.parent_group_id, child_type;
     END IF;
 
@@ -72,10 +72,10 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger to attach the function to group_hierarchies table
-CREATE OR REPLACE TRIGGER enforce_single_user_list_child
+CREATE OR REPLACE TRIGGER enforce_single_list_child
 BEFORE INSERT OR UPDATE ON public.group_hierarchies
 FOR EACH ROW
-EXECUTE FUNCTION check_single_user_list_child();
+EXECUTE FUNCTION check_single_list_child();
 
 -- 1. Create the trigger function
 CREATE OR REPLACE FUNCTION prevent_group_hierarchy_cycles()
@@ -124,5 +124,65 @@ CREATE TRIGGER check_group_hierarchy_cycle
 BEFORE INSERT OR UPDATE ON public.group_hierarchies
 FOR EACH ROW
 EXECUTE FUNCTION prevent_group_hierarchy_cycles();
+
+-- Trigger fuction to enforce root cannot be a child
+CREATE OR REPLACE FUNCTION prevent_root_as_child()
+RETURNS TRIGGER AS $$
+DECLARE
+    child_type group_type_enum;
+    root_count INTEGER;
+BEGIN
+    -- Check if the new child group is the root group
+    SELECT type INTO child_type
+    FROM public.groups
+    WHERE id = NEW.child_group_id;
+
+    -- If the child group is of type 'root', raise an exception
+    IF child_type = 'root' THEN
+        RAISE EXCEPTION 'Cannot add a root group as a child group.';
+    END IF;
+
+    RETURN NEW; -- Allow the insert/update to proceed
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to attach the function to group_hierarchies table
+CREATE OR REPLACE TRIGGER enforce_root_behavior
+BEFORE INSERT OR UPDATE ON public.group_hierarchies
+FOR EACH ROW
+EXECUTE FUNCTION prevent_root_as_child();
+
+-- Trigger function to enforce single root type in the groups table
+CREATE OR REPLACE FUNCTION prevent_multiple_roots()
+RETURNS TRIGGER AS $$
+DECLARE
+    root_count INTEGER;
+BEGIN
+    -- if there already exists a root, we cannot add another root 
+    IF NEW.type IS DISTINCT FROM 'root' THEN
+        RETURN NEW;
+    END IF;
+
+    SELECT COUNT(*)
+    INTO root_count
+    FROM public.groups
+    WHERE type = 'root'
+        AND (TG_OP = 'INSERT' OR id != NEW.id);
+
+    -- If the child group is of type 'root' and there is already a root group, raise an exception
+    IF root_count > 0 THEN
+        RAISE EXCEPTION 'Cannot add a root group when one already exists.';
+    END IF;
+
+    RETURN NEW;
+
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to attach the fuction to groups table
+CREATE OR REPLACE TRIGGER enforce_single_root
+BEFORE INSERT OR UPDATE ON public.groups
+FOR each ROW
+EXECUTE FUNCTION prevent_multiple_roots();
 
 COMMIT;

@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from auth.google_auth import verify_google_token
-from auth.jwt import create_token
+from src.middlewares.auth.google_auth import verify_google_token
+from src.middlewares.auth.jwt import create_token
 
 app = FastAPI()
 

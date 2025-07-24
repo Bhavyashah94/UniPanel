@@ -28,7 +28,7 @@ const fitViewOptions: FitViewOptions = {
 };
  
 const defaultEdgeOptions: DefaultEdgeOptions = {
-  animated: true,
+  animated: false,
 };
  
 const onNodeDrag: OnNodeDrag = (_, node) => {
@@ -53,7 +53,7 @@ function Flow() {
   );
  
   return (
-    <div style={{ width: '100%', height: '100vh' }}>
+    <div className='reactflow-wrapper'>
       <ReactFlow 
         nodes={nodes}
         edges={edges}

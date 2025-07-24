@@ -1,7 +1,10 @@
 -- schema.sql
+-- This file defines the database schema for the UniPanel application.
+-- It includes table definations, constraints, and necessary types.
+
 
 -- Drop tables and types if they exist (for development/re-running script)
--- In a production migration, you'd typically use ALTER TABLE or more sophisticated migration tools
+-- In a production migration, use ALTER TABLE or more sophisticated migration tools
 DROP TABLE IF EXISTS public.group_members CASCADE;
 DROP TABLE IF EXISTS public.group_hierarchies CASCADE;
 DROP TABLE IF EXISTS public.users CASCADE;
@@ -70,7 +73,7 @@ CREATE TABLE IF NOT EXISTS public.courses
 CREATE TABLE IF NOT EXISTS public.groups
 (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL,
     description TEXT,
     type group_type_enum NOT NULL DEFAULT 'organizational_unit',
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -83,6 +86,7 @@ CREATE TABLE IF NOT EXISTS public.group_hierarchies
 (
     child_group_id UUID PRIMARY KEY, -- Child can only have one parent
     parent_group_id UUID NOT NULL,
+    child_name VARCHAR(255) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -94,7 +98,9 @@ CREATE TABLE IF NOT EXISTS public.group_hierarchies
     CONSTRAINT FK_parent_group
         FOREIGN KEY (parent_group_id)
         REFERENCES public.groups (id)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+
+    CONSTRAINT UQ_sibling_name UNIQUE (parent_group_id, child_name)
 );
 
 
@@ -149,8 +155,6 @@ CREATE TABLE IF NOT EXISTS public.rooms
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP WITH TIME ZONE
 );
-
-
 
 ALTER TABLE IF EXISTS public.course_group_members
     ADD CONSTRAINT fk_course_group_members_course FOREIGN KEY (course_id)

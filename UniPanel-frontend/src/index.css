@@ -1,0 +1,20 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+  height: 100%; /* Make both html and body take 100% of their parent/viewport */
+}
+
+#root { /* Or .root if that's your main container class */
+  height: 100%; /* Make your main app container take 100% of body's height */
+  width: 100%;
+  display: flex;
+  flex-direction: column; /* Optional: if you want to stack children vertically */
+}
+
+.reactflow-wrapper {
+  width: 100%;
+  height: 100%; /* Now this will reliably take 100% of #root's height (which is 100% of body, which is 100% of html, which is 100% of viewport) */
+  background-color: aqua;
+}
